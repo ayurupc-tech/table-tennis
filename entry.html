@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>エントリー</title>
+</head>
+<body>
+
+<h1>エントリー</h1>
+
+<input id="name" placeholder="名前"><br><br>
+<button onclick="send()">登録</button>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+<script>
+const LIFF_ID = "2009789600-3P82J7YF";
+const GAS_URL = "https://script.google.com/macros/s/AKfycby8RrBjjvBFKU6G1D8tJD2SL3BHsSOqAE2nkpDdlhjykOsYI03a3uO0sN6URfIBcGQl/exec";
+
+let userId = "";
+
+async function init() {
+  await liff.init({ liffId: LIFF_ID });
+
+  const profile = await liff.getProfile();
+  userId = profile.userId;
+}
+
+async function send() {
+  const name = document.getElementById("name").value;
+
+  const res = await fetch(
+    GAS_URL + "?type=write&userId=" + userId + "&name=" + name
+  );
+
+  const data = await res.json();
+
+  alert("登録完了");
+
+  location.href = "mypage.html";
+}
+
+init();
+</script>
+
+</body>
+</html>
