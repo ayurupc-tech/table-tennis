@@ -17,35 +17,23 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycby8RrBjjvBFKU6G1D8tJD2S
 
 async function main() {
 
-  try {
+  await liff.init({ liffId: LIFF_ID });
 
-    // LIFF初期化
-    await liff.init({ liffId: LIFF_ID });
+  if (!liff.isLoggedIn()) {
+    liff.login();
+    return;
+  }
 
-    // ログイン
-    if (!liff.isLoggedIn()) {
-      liff.login();
-      return;
-    }
+  const profile = await liff.getProfile();
+  const userId = profile.userId;
 
-    // userId取得
-    const profile = await liff.getProfile();
-    const userId = profile.userId;
+  const res = await fetch(GAS_URL + "?type=checkUser&userId=" + userId);
+  const data = await res.json();
 
-    // GASで存在チェック
-    const res = await fetch(GAS_URL + "?type=checkUser&userId=" + userId);
-    const data = await res.json();
-
-    // 分岐
-    if (data.status === "exists") {
-      window.location.href = GAS_URL + "?page=mypage";
-    } else {
-      window.location.href = GAS_URL + "?page=entry";
-    }
-
-  } catch (e) {
-    alert("エラー：" + e);
-    console.error(e);
+  if (data.status === "exists") {
+    location.href = "mypage.html";
+  } else {
+    location.href = "entry.html";
   }
 }
 
