@@ -2,15 +2,89 @@
 <html>
 <head>
   <meta charset="utf-8">
+  <base target="_top">
   <title>マイページ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    .item {
+      margin-bottom: 15px;
+    }
+
+    .label {
+      font-size: 13px;
+      color: #888;
+    }
+
+    .value {
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .loading {
+      text-align: center;
+      margin-top: 20px;
+    }
+  </style>
 </head>
+
 <body>
 
-<h1>マイページ</h1>
+<div class="container">
 
-<div id="name">読み込み中...</div>
+  <h2>登録情報</h2>
 
-<button onclick="back()">戻る</button>
+  <div id="loading" class="loading">読み込み中...</div>
+
+  <div id="content" style="display:none;">
+
+    <div class="item">
+      <div class="label">名前</div>
+      <div class="value" id="name"></div>
+    </div>
+
+    <div class="item">
+      <div class="label">フリガナ</div>
+      <div class="value" id="kana"></div>
+    </div>
+
+    <div class="item">
+      <div class="label">年齢</div>
+      <div class="value" id="age"></div>
+    </div>
+
+    <div class="item">
+      <div class="label">所属チーム・クラブ</div>
+      <div class="value" id="club"></div>
+    </div>
+
+    <div class="item">
+      <div class="label">出場ランク</div>
+      <div class="value" id="rank"></div>
+    </div>
+
+  </div>
+
+</div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
@@ -18,21 +92,49 @@
 const LIFF_ID = "2009789600-3P82J7YF";
 const GAS_URL = "https://script.google.com/macros/s/AKfycby8RrBjjvBFKU6G1D8tJD2SL3BHsSOqAE2nkpDdlhjykOsYI03a3uO0sN6URfIBcGQl/exec";
 
-async function init() {
+let userId = "";
 
+async function init() {
   await liff.init({ liffId: LIFF_ID });
 
+  if (!liff.isLoggedIn()) {
+    liff.login();
+    return;
+  }
+
   const profile = await liff.getProfile();
-  const userId = profile.userId;
+  userId = profile.userId;
 
-  const res = await fetch(GAS_URL + "?type=getUser&userId=" + userId);
-  const data = await res.json();
-
-  document.getElementById("name").innerText = data.name;
+  loadUser();
 }
 
-function back() {
-  location.href = "index.html";
+// ===== データ取得 =====
+async function loadUser() {
+
+  try {
+    const res = await fetch(GAS_URL + "?type=getUser&userId=" + userId);
+    const data = await res.json();
+
+    if (data.result !== "ok") {
+      alert("ユーザーが見つかりません");
+      return;
+    }
+
+    // 表示
+    document.getElementById("name").innerText = data.name;
+    document.getElementById("kana").innerText = data.kana;
+    document.getElementById("age").innerText = data.age;
+    document.getElementById("club").innerText = data.club;
+    document.getElementById("rank").innerText = data.rank;
+
+    // 表示切替
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("content").style.display = "block";
+
+  } catch (e) {
+    alert("通信エラー：" + e);
+    console.error(e);
+  }
 }
 
 init();
