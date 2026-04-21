@@ -26,33 +26,45 @@
       text-align: center;
     }
 
-    .form-group {
+    .member {
+      border: 1px solid #ddd;
+      padding: 15px;
       margin-bottom: 15px;
+      border-radius: 8px;
+    }
+
+    .form-group {
+      margin-bottom: 10px;
     }
 
     label {
-      display: block;
       font-size: 14px;
-      margin-bottom: 5px;
+      display: block;
     }
 
     input, select {
       width: 100%;
-      padding: 10px;
-      font-size: 16px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
+      padding: 8px;
+      margin-top: 4px;
     }
 
     button {
       width: 100%;
-      padding: 14px;
-      font-size: 16px;
+      padding: 12px;
+      margin-top: 10px;
       border: none;
       border-radius: 8px;
+      font-size: 16px;
+    }
+
+    .add-btn {
+      background: #007bff;
+      color: white;
+    }
+
+    .submit-btn {
       background: #06C755;
       color: white;
-      font-weight: bold;
     }
 
     button:disabled {
@@ -65,39 +77,13 @@
 
 <div class="container">
 
-  <h2>エントリー登録</h2>
+  <h2>複数エントリー登録</h2>
 
-  <div class="form-group">
-    <label>名前</label>
-    <input type="text" id="name">
-  </div>
+  <div id="members"></div>
 
-  <div class="form-group">
-    <label>フリガナ</label>
-    <input type="text" id="kana">
-  </div>
+  <button class="add-btn" onclick="addMember()">＋追加</button>
 
-  <div class="form-group">
-    <label>年齢</label>
-    <input type="number" id="age">
-  </div>
-
-  <div class="form-group">
-    <label>所属チーム・クラブ</label>
-    <input type="text" id="club">
-  </div>
-
-  <div class="form-group">
-    <label>出場ランク</label>
-    <select id="rank">
-      <option value="">選択してください</option>
-      <option value="初級">初級</option>
-      <option value="中級">中級</option>
-      <option value="上級">上級</option>
-    </select>
-  </div>
-
-  <button id="submitBtn" onclick="submitData()">登録する</button>
+  <button id="submitBtn" class="submit-btn" onclick="submitData()">まとめて登録</button>
 
 </div>
 
@@ -108,6 +94,7 @@ const LIFF_ID = "2009789600-3P82J7YF";
 const GAS_URL = "https://script.google.com/macros/s/AKfycby8RrBjjvBFKU6G1D8tJD2SL3BHsSOqAE2nkpDdlhjykOsYI03a3uO0sN6URfIBcGQl/exec";
 
 let userId = "";
+let memberCount = 0;
 let isSubmitting = false;
 
 // ===== 初期化 =====
@@ -121,12 +108,64 @@ async function init() {
 
   const profile = await liff.getProfile();
   userId = profile.userId;
+
+  addMember(); // 最初の1人
+}
+
+// ===== 入力欄追加 =====
+function addMember() {
+
+  if (memberCount >= 10) {
+    alert("最大10人までです");
+    return;
+  }
+
+  memberCount++;
+
+  const div = document.createElement("div");
+  div.className = "member";
+  div.id = "member" + memberCount;
+
+  div.innerHTML = `
+    <h3>参加者 ${memberCount}</h3>
+
+    <div class="form-group">
+      <label>名前</label>
+      <input type="text" class="name">
+    </div>
+
+    <div class="form-group">
+      <label>フリガナ</label>
+      <input type="text" class="kana">
+    </div>
+
+    <div class="form-group">
+      <label>年齢</label>
+      <input type="number" class="age">
+    </div>
+
+    <div class="form-group">
+      <label>所属チーム</label>
+      <input type="text" class="club">
+    </div>
+
+    <div class="form-group">
+      <label>出場ランク</label>
+      <select class="rank">
+        <option value="">選択してください</option>
+        <option value="初級">初級</option>
+        <option value="中級">中級</option>
+        <option value="上級">上級</option>
+      </select>
+    </div>
+  `;
+
+  document.getElementById("members").appendChild(div);
 }
 
 // ===== 送信 =====
 async function submitData() {
 
-  // 🔴 連打防止
   if (isSubmitting) return;
   isSubmitting = true;
 
@@ -134,50 +173,49 @@ async function submitData() {
   btn.disabled = true;
   btn.innerText = "送信中...";
 
-  const name = document.getElementById("name").value;
-  const kana = document.getElementById("kana").value;
-  const age = document.getElementById("age").value;
-  const club = document.getElementById("club").value;
-  const rank = document.getElementById("rank").value;
+  const members = document.querySelectorAll(".member");
 
-  // 入力チェック
-  if (!name || !kana || !age || !club || !rank) {
-    alert("すべて入力してください");
+  let requests = [];
 
-    resetButton();
-    return;
-  }
+  for (let m of members) {
 
-  const url = GAS_URL +
-    "?type=write" +
-    "&userId=" + encodeURIComponent(userId) +
-    "&name=" + encodeURIComponent(name) +
-    "&kana=" + encodeURIComponent(kana) +
-    "&age=" + encodeURIComponent(age) +
-    "&club=" + encodeURIComponent(club) +
-    "&rank=" + encodeURIComponent(rank);
+    const name = m.querySelector(".name").value;
+    const kana = m.querySelector(".kana").value;
+    const age = m.querySelector(".age").value;
+    const club = m.querySelector(".club").value;
+    const rank = m.querySelector(".rank").value;
 
-  try {
-    const res = await fetch(url);
-    const data = await res.json();
-
-    // 🔴 重複検知
-    if (data.result === "duplicate") {
-      alert("同じ登録された名前があります");
+    if (!name || !kana || !age || !club || !rank) {
+      alert("未入力の参加者があります");
       resetButton();
       return;
     }
 
-    // ✅ 成功
-    if (data.result === "write_ok") {
-      alert("登録完了！");
-      location.href = "mypage.html";
-      return;
+    const url = GAS_URL +
+      "?type=write" +
+      "&userId=" + encodeURIComponent(userId) +
+      "&name=" + encodeURIComponent(name) +
+      "&kana=" + encodeURIComponent(kana) +
+      "&age=" + encodeURIComponent(age) +
+      "&club=" + encodeURIComponent(club) +
+      "&rank=" + encodeURIComponent(rank);
+
+    requests.push(fetch(url).then(res => res.json()));
+  }
+
+  try {
+    const results = await Promise.all(requests);
+
+    for (let r of results) {
+      if (r.result === "duplicate") {
+        alert("同じ登録された名前があります");
+        resetButton();
+        return;
+      }
     }
 
-    // その他
-    alert("登録失敗");
-    resetButton();
+    alert("全員登録完了！");
+    location.href = "mypage.html";
 
   } catch (e) {
     alert("通信エラー：" + e);
@@ -190,7 +228,7 @@ async function submitData() {
 function resetButton() {
   const btn = document.getElementById("submitBtn");
   btn.disabled = false;
-  btn.innerText = "登録する";
+  btn.innerText = "まとめて登録";
   isSubmitting = false;
 }
 
