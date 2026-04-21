@@ -31,6 +31,21 @@
       padding: 15px;
       margin-bottom: 15px;
       border-radius: 8px;
+      position: relative;
+    }
+
+    .remove-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #ff4d4f;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      font-size: 16px;
+      cursor: pointer;
     }
 
     .form-group {
@@ -46,6 +61,15 @@
       width: 100%;
       padding: 8px;
       margin-top: 4px;
+    }
+
+    .suggest {
+      background: #eee;
+      padding: 5px;
+      margin-top: 5px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
     }
 
     button {
@@ -70,19 +94,18 @@
     button:disabled {
       background: #999;
     }
+
   </style>
 </head>
 
 <body>
 
 <div class="container">
-
   <h2>複数エントリー登録</h2>
 
   <div id="members"></div>
 
   <button class="add-btn" onclick="addMember()">＋追加</button>
-
   <button id="submitBtn" class="submit-btn" onclick="submitData()">まとめて登録</button>
 
 </div>
@@ -109,12 +132,11 @@ async function init() {
   const profile = await liff.getProfile();
   userId = profile.userId;
 
-  addMember(); // 最初の1人
+  addMember(); // 初期1人
 }
 
-// ===== 入力欄追加 =====
+// ===== メンバー追加 =====
 function addMember() {
-
   if (memberCount >= 10) {
     alert("最大10人までです");
     return;
@@ -124,9 +146,10 @@ function addMember() {
 
   const div = document.createElement("div");
   div.className = "member";
-  div.id = "member" + memberCount;
 
   div.innerHTML = `
+    ${memberCount > 1 ? `<button class="remove-btn" onclick="removeMember(this)">−</button>` : ""}
+
     <h3>参加者 ${memberCount}</h3>
 
     <div class="form-group">
@@ -147,6 +170,7 @@ function addMember() {
     <div class="form-group">
       <label>所属チーム</label>
       <input type="text" class="club">
+      ${memberCount > 1 ? `<div class="suggest" onclick="applyClub(this)">↑1人目と同じクラブを使用</div>` : ""}
     </div>
 
     <div class="form-group">
@@ -161,6 +185,22 @@ function addMember() {
   `;
 
   document.getElementById("members").appendChild(div);
+}
+
+// ===== 削除 =====
+function removeMember(btn) {
+  btn.parentElement.remove();
+  memberCount--;
+}
+
+// ===== クラブコピー =====
+function applyClub(el) {
+  const firstClub = document.querySelector(".member .club").value;
+  if (!firstClub) {
+    alert("1人目のクラブを先に入力してください");
+    return;
+  }
+  el.parentElement.querySelector(".club").value = firstClub;
 }
 
 // ===== 送信 =====
@@ -204,6 +244,7 @@ async function submitData() {
   }
 
   try {
+
     const results = await Promise.all(requests);
 
     for (let r of results) {
