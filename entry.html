@@ -54,6 +54,10 @@
       color: white;
       font-weight: bold;
     }
+
+    button:disabled {
+      background: #999;
+    }
   </style>
 </head>
 
@@ -93,7 +97,7 @@
     </select>
   </div>
 
-  <button onclick="submitData()">登録する</button>
+  <button id="submitBtn" onclick="submitData()">登録する</button>
 
 </div>
 
@@ -104,7 +108,9 @@ const LIFF_ID = "2009789600-3P82J7YF";
 const GAS_URL = "https://script.google.com/macros/s/AKfycby8RrBjjvBFKU6G1D8tJD2SL3BHsSOqAE2nkpDdlhjykOsYI03a3uO0sN6URfIBcGQl/exec";
 
 let userId = "";
+let isSubmitting = false;
 
+// ===== 初期化 =====
 async function init() {
   await liff.init({ liffId: LIFF_ID });
 
@@ -120,14 +126,25 @@ async function init() {
 // ===== 送信 =====
 async function submitData() {
 
+  // 🔴 連打防止
+  if (isSubmitting) return;
+  isSubmitting = true;
+
+  const btn = document.getElementById("submitBtn");
+  btn.disabled = true;
+  btn.innerText = "送信中...";
+
   const name = document.getElementById("name").value;
   const kana = document.getElementById("kana").value;
   const age = document.getElementById("age").value;
   const club = document.getElementById("club").value;
   const rank = document.getElementById("rank").value;
 
+  // 入力チェック
   if (!name || !kana || !age || !club || !rank) {
     alert("すべて入力してください");
+
+    resetButton();
     return;
   }
 
@@ -144,17 +161,37 @@ async function submitData() {
     const res = await fetch(url);
     const data = await res.json();
 
+    // 🔴 重複検知
+    if (data.result === "duplicate") {
+      alert("同じ登録された名前があります");
+      resetButton();
+      return;
+    }
+
+    // ✅ 成功
     if (data.result === "write_ok") {
       alert("登録完了！");
       location.href = "mypage.html";
-    } else {
-      alert("登録失敗");
+      return;
     }
+
+    // その他
+    alert("登録失敗");
+    resetButton();
 
   } catch (e) {
     alert("通信エラー：" + e);
     console.error(e);
+    resetButton();
   }
+}
+
+// ===== ボタン復帰 =====
+function resetButton() {
+  const btn = document.getElementById("submitBtn");
+  btn.disabled = false;
+  btn.innerText = "登録する";
+  isSubmitting = false;
 }
 
 init();
