@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<base target="_top">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>アナウンス設定</title>
+
+<style>
+body {
+  font-family: sans-serif;
+  background: #f5f5f5;
+  padding: 10px;
+}
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.container {
+  max-width: 500px;
+  margin: auto;
+}
+.box {
+  background: white;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 10px;
+}
+.item {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+.item:last-child {
+  border-bottom: none;
+}
+button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+}
+.save {
+  background: #06C755;
+  color: white;
+}
+.share {
+  background: #007bff;
+  color: white;
+  width: auto;
+  padding: 8px 12px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <h2>アナウンス設定</h2>
+    <button class="share" onclick="openShare()">共有</button>
+  </div>
+
+  <div class="box">
+    <h3>通知ON</h3>
+    <div id="onList"></div>
+  </div>
+
+  <button class="save" onclick="save()">設定を確定</button>
+
+  <div class="box">
+    <h3>通知OFF</h3>
+    <div id="offList"></div>
+  </div>
+
+</div>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+<script>
+const LIFF_ID = "2009789600-3P82J7YF";
+const GAS_URL = "https://script.google.com/macros/s/AKfycby8RrBjjvBFKU6G1D8tJD2SL3BHsSOqAE2nkpDdlhjykOsYI03a3uO0sN6URfIBcGQl/exec";
+
+let userId = "";
+let myMembers = [];     // 自分登録
+let clubMembers = [];   // 同クラブ
+let selected = {};      // ON/OFF状態
+
+// ===== 初期化 =====
+async function init() {
+  await liff.init({ liffId: LIFF_ID });
+
+  if (!liff.isLoggedIn()) {
+    liff.login();
+    return;
+  }
+
+  const profile = await liff.getProfile();
+  userId = profile.userId;
+
+  loadData();
+}
+
+// ===== データ取得 =====
+async function loadData() {
+
+  const res = await fetch(GAS_URL + "?type=getUsers&userId=" + userId);
+  const data = await res.json();
+
+  myMembers = data.list;
+
+  if (myMembers.length === 0) {
+    alert("参加者がいません");
+    return;
+  }
+
+  const club = myMembers[0].club;
+
+  // 同クラブ取得
+  const res2 = await fetch(GAS_URL + "?type=getClubMembers&club=" + encodeURIComponent(club));
+  const data2 = await res2.json();
+
+  clubMembers = data2.list;
+
+  render();
+}
+
+// ===== 描画 =====
+function render() {
+
+  const onList = document.getElementById("onList");
+  const offList = document.getElementById("offList");
+
+  onList.innerHTML = "";
+  offList.innerHTML = "";
+
+  // 自分の参加者（強制ON）
+  myMembers.forEach(m => {
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = "✔ " + m.name;
+    onList.appendChild(div);
+  });
+
+  // 同クラブ
+  clubMembers.forEach(m => {
+
+    // 自分の参加者は除外
+    if (myMembers.some(x => x.row === m.row)) return;
+
+    if (selected[m.row]) {
+      onList.appendChild(createCheckbox(m, true));
+    } else {
+      offList.appendChild(createCheckbox(m, false));
+    }
+  });
+}
+
+// ===== チェックボックス =====
+function createCheckbox(m, isOn) {
+
+  const div = document.createElement("div");
+  div.className = "item";
+
+  const checked = isOn ? "checked" : "";
+
+  div.innerHTML = `
+    <input type="checkbox" ${checked} onchange="toggle(${m.row})">
+    ${m.name}
+  `;
+
+  return div;
+}
+
+// ===== ON/OFF切替 =====
+function toggle(row) {
+  selected[row] = !selected[row];
+  render();
+}
+
+// ===== 保存 =====
+async function save() {
+
+  let targets = [];
+
+  for (let key in selected) {
+    if (selected[key]) {
+      targets.push(key);
+    }
+  }
+
+  const url = GAS_URL +
+    "?type=saveAnnouncement" +
+    "&userId=" + userId +
+    "&targets=" + targets.join(",");
+
+  await fetch(url);
+
+  alert("保存しました");
+}
+
+// ===== 共有 =====
+function openShare() {
+
+  const url = location.origin + location.pathname + "?share=" + userId;
+
+  const mode = confirm("OKでLINE共有\nキャンセルでQR表示");
+
+  if (mode) {
+    liff.shareTargetPicker([{
+      type: "text",
+      text: url
+    }]);
+  } else {
+    showQR(url);
+  }
+}
+
+// ===== QR表示 =====
+function showQR(url) {
+  const w = window.open("");
+  w.document.write(`
+    <h2>QRコード</h2>
+    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${url}">
+    <p>${url}</p>
+  `);
+}
+
+init();
+</script>
+
+</body>
+</html>
