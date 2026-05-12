@@ -4,29 +4,59 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>アナウンス設定</title>
+
 <style>
 body { font-family:sans-serif; background:#f5f5f5; padding:10px; }
 .container { max-width:500px; margin:auto; }
+
+.header {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
 .box { background:white; margin-top:10px; padding:10px; border-radius:10px; }
+
 .item { padding:8px 0; border-bottom:1px solid #eee; }
-button { width:100%; padding:12px; margin-top:10px; border:none; border-radius:8px; }
-.save { background:#06C755; color:white; }
+
+button { border:none; border-radius:8px; }
+
+.save { width:100%; padding:12px; margin-top:10px; background:#06C755; color:white; }
+
+.share {
+  background:#007bff;
+  color:white;
+  padding:8px 12px;
+}
 </style>
 </head>
+
 <body>
+
 <div class="container">
+
+  <!-- 🔥 復活：ヘッダー -->
+  <div class="header">
+    <h2>アナウンス設定</h2>
+    <button class="share" onclick="openShare()">共有</button>
+  </div>
+
   <div class="box">
     <h3>通知ON</h3>
     <div id="onList"></div>
   </div>
+
   <button class="save" onclick="save()">設定を確定</button>
+
   <div class="box">
     <h3>通知OFF</h3>
     <div id="offList"></div>
   </div>
+
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
 <script>
 const LIFF_ID = "2009789600-HXuo8awK";
 const GAS_URL = "https://script.google.com/macros/s/AKfycby8RrBjjvBFKU6G1D8tJD2SL3BHsSOqAE2nkpDdlhjykOsYI03a3uO0sN6URfIBcGQl/exec";
@@ -38,6 +68,7 @@ let selected = {};
 
 // ===== 初期化 =====
 async function init() {
+
   await liff.init({ liffId: LIFF_ID });
 
   if (!liff.isLoggedIn()) {
@@ -51,7 +82,7 @@ async function init() {
   loadData();
 }
 
-// ===== データ取得 =====
+// ===== データ取得（1回）=====
 async function loadData() {
 
   const res = await fetch(GAS_URL + "?type=getInitData&userId=" + userId);
@@ -80,7 +111,7 @@ async function loadData() {
   render();
 }
 
-// ===== 描画（高速化版）=====
+// ===== 描画（高速）=====
 function render() {
 
   let onHTML = "";
@@ -141,7 +172,28 @@ async function save() {
   alert("保存しました");
 }
 
+// ===== 🔥 復活：共有機能 =====
+function openShare() {
+
+  const url = location.origin + location.pathname + "?share=" + userId;
+
+  if (confirm("OKでLINE共有\nキャンセルでQR表示")) {
+
+    liff.shareTargetPicker([
+      { type: "text", text: url }
+    ]);
+
+  } else {
+
+    window.open(
+      "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + url
+    );
+
+  }
+}
+
 init();
 </script>
+
 </body>
 </html>
