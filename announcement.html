@@ -33,34 +33,21 @@ body {
   padding: 8px 0;
   border-bottom: 1px solid #eee;
 }
-.item:last-child {
-  border-bottom: none;
-}
 button {
   width: 100%;
   padding: 12px;
   margin-top: 10px;
   border: none;
   border-radius: 8px;
-  font-size: 16px;
 }
-.save {
-  background: #06C755;
-  color: white;
-}
-.share {
-  background: #007bff;
-  color: white;
-  width: auto;
-  padding: 8px 12px;
-}
+.save { background: #06C755; color: white; }
+.share { background: #007bff; color: white; width:auto; padding:8px 12px;}
 </style>
 </head>
 
 <body>
 
 <div class="container">
-
   <div class="header">
     <h2>アナウンス設定</h2>
     <button class="share" onclick="openShare()">共有</button>
@@ -77,7 +64,6 @@ button {
     <h3>通知OFF</h3>
     <div id="offList"></div>
   </div>
-
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
@@ -87,9 +73,9 @@ const LIFF_ID = "2009789600-3P82J7YF";
 const GAS_URL = "https://script.google.com/macros/s/AKfycby8RrBjjvBFKU6G1D8tJD2SL3BHsSOqAE2nkpDdlhjykOsYI03a3uO0sN6URfIBcGQl/exec";
 
 let userId = "";
-let myMembers = [];     // 自分登録
-let clubMembers = [];   // 同クラブ
-let selected = {};      // ON/OFF状態
+let myMembers = [];
+let clubMembers = [];
+let selected = {};
 
 // ===== 初期化 =====
 async function init() {
@@ -109,23 +95,36 @@ async function init() {
 // ===== データ取得 =====
 async function loadData() {
 
+  // 自分の参加者
   const res = await fetch(GAS_URL + "?type=getUsers&userId=" + userId);
   const data = await res.json();
 
-  myMembers = data.list;
+  myMembers = data.list || [];
 
   if (myMembers.length === 0) {
     alert("参加者がいません");
     return;
   }
 
-  const club = myMembers[0].club;
+  // 🔥 クラブ名 normalize
+  const club = (myMembers[0].club || "").trim();
 
   // 同クラブ取得
   const res2 = await fetch(GAS_URL + "?type=getClubMembers&club=" + encodeURIComponent(club));
   const data2 = await res2.json();
 
-  clubMembers = data2.list;
+  clubMembers = data2.list || [];
+
+  // 🔥 保存済み読み込み
+  const res3 = await fetch(GAS_URL + "?type=getAnnouncement&userId=" + userId);
+  const data3 = await res3.json();
+
+  if (data3.targets) {
+    const arr = data3.targets.split(",");
+    arr.forEach(id => {
+      if (id) selected[id] = true;
+    });
+  }
 
   render();
 }
@@ -139,7 +138,7 @@ function render() {
   onList.innerHTML = "";
   offList.innerHTML = "";
 
-  // 自分の参加者（強制ON）
+  // 自分（強制ON）
   myMembers.forEach(m => {
     const div = document.createElement("div");
     div.className = "item";
@@ -150,7 +149,7 @@ function render() {
   // 同クラブ
   clubMembers.forEach(m => {
 
-    // 自分の参加者は除外
+    // 自分除外
     if (myMembers.some(x => x.row === m.row)) return;
 
     if (selected[m.row]) {
@@ -161,23 +160,20 @@ function render() {
   });
 }
 
-// ===== チェックボックス =====
+// ===== チェック =====
 function createCheckbox(m, isOn) {
-
   const div = document.createElement("div");
   div.className = "item";
 
-  const checked = isOn ? "checked" : "";
-
   div.innerHTML = `
-    <input type="checkbox" ${checked} onchange="toggle(${m.row})">
+    <input type="checkbox" ${isOn ? "checked" : ""} onchange="toggle(${m.row})">
     ${m.name}
   `;
 
   return div;
 }
 
-// ===== ON/OFF切替 =====
+// ===== 切替 =====
 function toggle(row) {
   selected[row] = !selected[row];
   render();
@@ -189,9 +185,7 @@ async function save() {
   let targets = [];
 
   for (let key in selected) {
-    if (selected[key]) {
-      targets.push(key);
-    }
+    if (selected[key]) targets.push(key);
   }
 
   const url = GAS_URL +
@@ -206,33 +200,18 @@ async function save() {
 
 // ===== 共有 =====
 function openShare() {
-
   const url = location.origin + location.pathname + "?share=" + userId;
 
-  const mode = confirm("OKでLINE共有\nキャンセルでQR表示");
-
-  if (mode) {
-    liff.shareTargetPicker([{
-      type: "text",
-      text: url
-    }]);
+  if (confirm("OKでLINE共有\nキャンセルでQR")) {
+    liff.shareTargetPicker([{ type: "text", text: url }]);
   } else {
-    showQR(url);
+    window.open(
+      "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + url
+    );
   }
-}
-
-// ===== QR表示 =====
-function showQR(url) {
-  const w = window.open("");
-  w.document.write(`
-    <h2>QRコード</h2>
-    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${url}">
-    <p>${url}</p>
-  `);
 }
 
 init();
 </script>
-
 </body>
 </html>
