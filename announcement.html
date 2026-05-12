@@ -95,32 +95,29 @@ async function init() {
 // ===== データ取得 =====
 async function loadData() {
 
-  // 自分の参加者
-  const res = await fetch(GAS_URL + "?type=getUsers&userId=" + userId);
+  // 🚀 一発取得（高速）
+  const res = await fetch(GAS_URL + "?type=getInitData&userId=" + userId);
   const data = await res.json();
 
-  myMembers = data.list || [];
+  if (data.result !== "ok") {
+    alert("データ取得失敗");
+    return;
+  }
+
+  myMembers = data.myMembers || [];
+  clubMembers = data.clubMembers || [];
 
   if (myMembers.length === 0) {
     alert("参加者がいません");
     return;
   }
 
-  // 🔥 クラブ名 normalize
-  const club = (myMembers[0].club || "").trim();
-
-  // 同クラブ取得
-  const res2 = await fetch(GAS_URL + "?type=getClubMembers&club=" + encodeURIComponent(club));
+  // 🔥 保存済み読み込み
+  const res2 = await fetch(GAS_URL + "?type=getAnnouncement&userId=" + userId);
   const data2 = await res2.json();
 
-  clubMembers = data2.list || [];
-
-  // 🔥 保存済み読み込み
-  const res3 = await fetch(GAS_URL + "?type=getAnnouncement&userId=" + userId);
-  const data3 = await res3.json();
-
-  if (data3.targets) {
-    const arr = data3.targets.split(",");
+  if (data2.targets) {
+    const arr = data2.targets.split(",");
     arr.forEach(id => {
       if (id) selected[id] = true;
     });
