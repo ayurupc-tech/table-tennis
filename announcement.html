@@ -96,7 +96,7 @@ async function init() {
 async function loadData() {
 
   // 自分の参加者
-  const res = await fetch(GAS_URL + "?type=getUsers&userId=" + userId);
+  const res = await fetch(GAS_URL + "?type=getInitData&userId=" + userId);
   const data = await res.json();
 
   myMembers = data.list || [];
