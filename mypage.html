@@ -1,35 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>マイページ</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 16px;
+    }
+    #loading {
+      font-size: 14px;
+      color: gray;
+    }
+    #list {
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>参加者一覧</h2>
+
+<div id="loading">読み込み中...</div>
+<div id="list"></div>
+
+<script>
+const GAS_URL = "ここにGASのURL";
+const userId = "ユーザーID"; // 実際の値に置き換え
+let userCount = 0;
+
+// 仮：createItem（元機能がある前提なら消してOK）
+function createItem(u) {
+  const div = document.createElement("div");
+  div.textContent = JSON.stringify(u);
+  document.getElementById("list").appendChild(div);
+}
+
 async function loadUsers() {
   try {
-
-    // 🔥 追加（先読みデータ使用）
     const cached = localStorage.getItem("initData");
 
     if (cached) {
-      const data = JSON.parse(cached);
+      try {
+        const data = JSON.parse(cached);
 
-      document.getElementById("loading").style.display = "none";
-      const list = document.getElementById("list");
-      list.innerHTML = "";
+        document.getElementById("loading").style.display = "none";
+        const list = document.getElementById("list");
+        list.innerHTML = "";
 
-      userCount = data.myMembers.length;
+        if (!data.myMembers || !Array.isArray(data.myMembers)) {
+          throw new Error("キャッシュ形式不正");
+        }
 
-      if (userCount === 0) {
-        list.innerHTML = "登録がありません";
+        userCount = data.myMembers.length;
+
+        if (userCount === 0) {
+          list.innerHTML = "登録がありません";
+          return;
+        }
+
+        data.myMembers.forEach(u => createItem(u));
+
+        // 🔥 裏で更新
+        fetchLatestUsers();
+
         return;
-      }
 
-      data.myMembers.forEach(u => createItem(u));
-      return;
+      } catch (err) {
+        console.warn("キャッシュ壊れ:", err);
+        localStorage.removeItem("initData");
+      }
     }
 
-    // ❌ fallback（念のため残す）
+    // fallback
     const res = await fetch(GAS_URL + "?type=getUsers&userId=" + userId);
     const data = await res.json();
 
     document.getElementById("loading").style.display = "none";
-
     const list = document.getElementById("list");
     list.innerHTML = "";
+
+    if (!data.list || !Array.isArray(data.list)) {
+      list.innerHTML = "データ取得エラー";
+      return;
+    }
 
     userCount = data.list.length;
 
@@ -40,7 +94,39 @@ async function loadUsers() {
 
     data.list.forEach(u => createItem(u));
 
+    // キャッシュ保存
+    localStorage.setItem("initData", JSON.stringify({
+      myMembers: data.list
+    }));
+
   } catch (e) {
     alert("通信エラー：" + e);
   }
 }
+
+// 裏更新
+async function fetchLatestUsers() {
+  try {
+    const res = await fetch(GAS_URL + "?type=getUsers&userId=" + userId);
+    const data = await res.json();
+
+    if (!data.list || !Array.isArray(data.list)) return;
+
+    localStorage.setItem("initData", JSON.stringify({
+      myMembers: data.list
+    }));
+
+    console.log("最新データ更新");
+
+  } catch (e) {
+    console.warn("更新失敗:", e);
+  }
+}
+
+// 初回実行
+loadUsers();
+
+</script>
+
+</body>
+</html>
