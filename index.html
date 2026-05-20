@@ -1,3 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>読み込み中</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      margin: 0;
+      background: white;
+      overflow: hidden;
+    }
+    .video-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background: white;
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      mix-blend-mode: multiply;
+      background: white;
+    }
+  </style>
+</head>
+<body>
+
+<div class="video-container">
+  <video id="video" autoplay muted playsinline>
+    <source src="video.mp4" type="video/mp4">
+  </video>
+</div>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
 <script>
 const LIFF_ID = "2009789600-3P82J7YF";
 const GAS_URL = "https://script.google.com/macros/s/AKfycby8RrBjjvBFKU6G1D8tJD2SL3BHsSOqAE2nkpDdlhjykOsYI03a3uO0sN6URfIBcGQl/exec";
@@ -5,10 +42,32 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycby8RrBjjvBFKU6G1D8tJD2S
 let isLoaded = false;
 let nextPage = "entry.html";
 
-const video = document.getElementById("video");
+let video; // ← ここ重要（後でセット）
 
+// ===== 初期化 =====
 async function main() {
   try {
+
+    // 🔥 DOM取得はここでやる
+    video = document.getElementById("video");
+
+    if (!video) {
+      alert("video要素が見つかりません");
+      return;
+    }
+
+    // ===== 動画制御（ここに移動）=====
+    video.addEventListener("timeupdate", () => {
+      if (video.currentTime >= 2.75) {
+        if (isLoaded) {
+          goNext();
+        } else {
+          video.currentTime = 0;
+          video.play();
+        }
+      }
+    });
+
     await liff.init({ liffId: LIFF_ID });
 
     if (!liff.isLoggedIn()) {
@@ -26,7 +85,7 @@ async function main() {
     if (data.status === "exists") {
       nextPage = "mypage.html";
 
-      // 🔥 ここが追加（全部先読み）
+      // 🔥 先読み（高速化）
       const initRes = await fetch(GAS_URL + "?type=getInitData&userId=" + userId);
       const initData = await initRes.json();
 
@@ -40,24 +99,18 @@ async function main() {
 
   } catch (e) {
     alert("エラー：" + e);
+    console.error(e);
   }
 }
 
-// ===== 動画制御そのまま =====
-video.addEventListener("timeupdate", () => {
-  if (video.currentTime >= 2.75) {
-    if (isLoaded) {
-      goNext();
-    } else {
-      video.currentTime = 0;
-      video.play();
-    }
-  }
-});
-
+// ===== 遷移 =====
 function goNext() {
   window.location.href = nextPage;
 }
 
-main();
+// 起動
+window.onload = main;
 </script>
+
+</body>
+</html>
