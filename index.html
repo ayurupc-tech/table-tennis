@@ -29,7 +29,8 @@
 
 <div class="video-container">
   <video id="video" autoplay muted playsinline>
-    <source src="video.mp4" type="video/mp4">
+    <!-- 🔥 ここ重要：絶対パスにする -->
+    <source src="https://YOUR_DOMAIN/video.mp4" type="video/mp4">
   </video>
 </div>
 
@@ -41,22 +42,26 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycby8RrBjjvBFKU6G1D8tJD2S
 
 let isLoaded = false;
 let nextPage = "entry.html";
-
-let video; // ← ここ重要（後でセット）
+let video;
 
 // ===== 初期化 =====
 async function main() {
   try {
 
-    // 🔥 DOM取得はここでやる
+    // ===== DOM取得（安全版）=====
     video = document.getElementById("video");
 
     if (!video) {
-      alert("video要素が見つかりません");
+      console.error("videoが見つからない");
       return;
     }
 
-    // ===== 動画制御（ここに移動）=====
+    // 🔥 読み込み失敗検知
+    video.onerror = () => {
+      console.error("video読み込み失敗");
+    };
+
+    // ===== 動画制御 =====
     video.addEventListener("timeupdate", () => {
       if (video.currentTime >= 2.75) {
         if (isLoaded) {
@@ -68,6 +73,7 @@ async function main() {
       }
     });
 
+    // ===== LIFF =====
     await liff.init({ liffId: LIFF_ID });
 
     if (!liff.isLoggedIn()) {
@@ -85,7 +91,7 @@ async function main() {
     if (data.status === "exists") {
       nextPage = "mypage.html";
 
-      // 🔥 先読み（高速化）
+      // 🔥 先読み
       const initRes = await fetch(GAS_URL + "?type=getInitData&userId=" + userId);
       const initData = await initRes.json();
 
@@ -108,8 +114,8 @@ function goNext() {
   window.location.href = nextPage;
 }
 
-// 起動
-window.onload = main;
+// ===== 起動（確実にDOM後）=====
+document.addEventListener("DOMContentLoaded", main);
 </script>
 
 </body>
