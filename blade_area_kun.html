@@ -169,6 +169,15 @@ accept="image/*">
 
 </div>
 
+<br>
+
+<label>ラケット名</label>
+
+<input
+type="text"
+id="racketName"
+placeholder="例：張本智和インナーフォースALC">
+
 </div>
 
 <canvas
@@ -460,6 +469,11 @@ function measureArea(){
         / 100
     );
 
+    const racketName =
+    document.getElementById(
+        "racketName"
+    ).value.trim();
+
     document.getElementById(
         "result"
     ).innerHTML =
@@ -467,6 +481,11 @@ function measureArea(){
     `
     <div>
 
+    <b>ラケット名：</b>
+    ${racketName || "未入力"}
+    
+    <br><br>
+    
     赤色輪郭面積：
     ${Math.round(maxArea)}
     pixel²
