@@ -261,6 +261,38 @@ function measureArea(){
     cv.imread(
         previewImage
     );
+    
+    // 長辺1000pxへ統一
+    const maxSize = 1000;
+    
+    const resizeScale =
+        maxSize /
+        Math.max(
+            src.cols,
+            src.rows
+        );
+    
+    const resized =
+        new cv.Mat();
+    
+    const resizeSize =
+        new cv.Size(
+            Math.round(src.cols * resizeScale),
+            Math.round(src.rows * resizeScale)
+        );
+    
+    cv.resize(
+        src,
+        resized,
+        resizeSize,
+        0,
+        0,
+        cv.INTER_AREA
+    );
+    
+    src.delete();
+    
+    src = resized;
 
     let hsv =
     new cv.Mat();
@@ -398,15 +430,28 @@ function measureArea(){
     cv.boundingRect(
         maxContour
     );
-
+    
+    let rectWidth =
+    rect.width;
+    
+    let rectHeight =
+    rect.height;
+    
+    if(rectWidth > rectHeight){
+    
+        let tmp = rectWidth;
+        rectWidth = rectHeight;
+        rectHeight = tmp;
+    }
+    
     const scaleX =
     realWidth /
-    rect.width;
-
+    rectWidth;
+    
     const scaleY =
     realHeight /
-    rect.height;
-
+    rectHeight;
+    
     const areaCm2 =
     (
         maxArea *
@@ -429,15 +474,14 @@ function measureArea(){
     <br><br>
 
     輪郭横：
-    ${rect.width}
+    ${rectWidth.toFixed(1)}
     px
-
+    
     <br>
-
+    
     輪郭縦：
-    ${rect.height}
+    ${rectHeight.toFixed(1)}
     px
-
     <br><br>
 
     <div class="big">
@@ -464,6 +508,7 @@ function measureArea(){
     mask.delete();
     contours.delete();
     hierarchy.delete();
+    resized.delete();
 
 }
 
