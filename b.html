@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>🏓 ブレード面積測定くん</title>
+
+<style>
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    font-family:"Yu Gothic UI",sans-serif;
+    background:#f4f7fa;
+    padding:20px;
+    margin:0;
+}
+
+.container{
+    max-width:900px;
+    margin:auto;
+}
+
+.card{
+    background:white;
+    padding:20px;
+    border-radius:12px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom:20px;
+}
+
+h1{
+    text-align:center;
+    color:#0078d7;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:15px;
+}
+
+@media(max-width:700px){
+
+    .grid{
+        grid-template-columns:1fr;
+    }
+
+}
+
+label{
+    display:block;
+    font-weight:bold;
+    margin-bottom:5px;
+}
+
+input{
+    width:100%;
+    padding:10px;
+    border:1px solid #ccc;
+    border-radius:8px;
+}
+
+button{
+    width:100%;
+    padding:15px;
+    border:none;
+    border-radius:10px;
+    background:#0078d7;
+    color:white;
+    font-size:18px;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#005fb3;
+}
+
+.preview{
+    text-align:center;
+}
+
+.preview img{
+    max-width:100%;
+    max-height:500px;
+    border:1px solid #ccc;
+    border-radius:10px;
+}
+
+.result{
+    background:#eef7ff;
+    padding:20px;
+    border-radius:10px;
+    line-height:2;
+}
+
+.big{
+    font-size:32px;
+    color:#d60000;
+    font-weight:bold;
+}
+
+.note{
+    color:#666;
+    font-size:13px;
+}
+
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<h1>🏓 ブレード面積測定くん</h1>
+
+<div class="card">
+
+<h2>測定設定</h2>
+
+<div class="grid">
+
+<div>
+<label>ブレード縦(mm)</label>
+<input type="number" id="realHeight" value="158">
+</div>
+
+<div>
+<label>ブレード横(mm)</label>
+<input type="number" id="realWidth" value="152">
+</div>
+
+</div>
+
+<br>
+
+<label>画像アップロード</label>
+
+<input
+type="file"
+id="imageInput"
+accept="image/*">
+
+</div>
+
+<div class="card preview">
+
+<img id="previewImage">
+
+</div>
+
+<div class="card">
+
+<button onclick="measureArea()">
+面積を計測する
+</button>
+
+</div>
+
+<div class="card">
+
+<h2>計測結果</h2>
+
+<div id="result" class="result">
+
+画像を選択してください
+
+</div>
+
+</div>
+
+<canvas
+id="canvas"
+style="display:none;">
+</canvas>
+
+</div>
+
+<script async src="https://docs.opencv.org/4.x/opencv.js"></script>
+
+<script>
+
+let imageLoaded = false;
+
+const imageInput =
+document.getElementById(
+    "imageInput"
+);
+
+const previewImage =
+document.getElementById(
+    "previewImage"
+);
+
+imageInput.addEventListener(
+    "change",
+    e=>{
+
+        const file =
+        e.target.files[0];
+
+        if(!file) return;
+
+        const reader =
+        new FileReader();
+
+        reader.onload =
+        function(ev){
+
+            previewImage.src =
+            ev.target.result;
+
+            imageLoaded = true;
+        };
+
+        reader.readAsDataURL(file);
+
+    }
+);
+
+function measureArea(){
+
+    if(!imageLoaded){
+
+        alert(
+            "画像を選択してください"
+        );
+
+        return;
+    }
+
+    const realHeight =
+    parseFloat(
+        document.getElementById(
+            "realHeight"
+        ).value
+    );
+
+    const realWidth =
+    parseFloat(
+        document.getElementById(
+            "realWidth"
+        ).value
+    );
+
+    if(
+        isNaN(realHeight) ||
+        isNaN(realWidth)
+    ){
+
+        alert(
+            "縦横サイズを入力してください"
+        );
+
+        return;
+    }
+
+    let src =
+    cv.imread(
+        previewImage
+    );
+
+    let hsv =
+    new cv.Mat();
+
+    cv.cvtColor(
+        src,
+        hsv,
+        cv.COLOR_RGBA2RGB
+    );
+
+    cv.cvtColor(
+        hsv,
+        hsv,
+        cv.COLOR_RGB2HSV
+    );
+
+    let low1 =
+    new cv.Mat(
+        hsv.rows,
+        hsv.cols,
+        hsv.type(),
+        [0,120,70,0]
+    );
+
+    let high1 =
+    new cv.Mat(
+        hsv.rows,
+        hsv.cols,
+        hsv.type(),
+        [10,255,255,255]
+    );
+
+    let low2 =
+    new cv.Mat(
+        hsv.rows,
+        hsv.cols,
+        hsv.type(),
+        [170,120,70,0]
+    );
+
+    let high2 =
+    new cv.Mat(
+        hsv.rows,
+        hsv.cols,
+        hsv.type(),
+        [180,255,255,255]
+    );
+
+    let mask1 =
+    new cv.Mat();
+
+    let mask2 =
+    new cv.Mat();
+
+    cv.inRange(
+        hsv,
+        low1,
+        high1,
+        mask1
+    );
+
+    cv.inRange(
+        hsv,
+        low2,
+        high2,
+        mask2
+    );
+
+    let mask =
+    new cv.Mat();
+
+    cv.add(
+        mask1,
+        mask2,
+        mask
+    );
+
+    let contours =
+    new cv.MatVector();
+
+    let hierarchy =
+    new cv.Mat();
+
+    cv.findContours(
+        mask,
+        contours,
+        hierarchy,
+        cv.RETR_EXTERNAL,
+        cv.CHAIN_APPROX_SIMPLE
+    );
+
+    if(
+        contours.size() === 0
+    ){
+
+        document.getElementById(
+            "result"
+        ).innerHTML =
+        "赤色部分が検出できませんでした";
+
+        return;
+    }
+
+    let maxArea = 0;
+    let maxContour = null;
+
+    for(
+        let i=0;
+        i<contours.size();
+        i++
+    ){
+
+        let contour =
+        contours.get(i);
+
+        let area =
+        cv.contourArea(
+            contour
+        );
+
+        if(
+            area > maxArea
+        ){
+
+            maxArea =
+            area;
+
+            maxContour =
+            contour;
+        }
+
+    }
+
+    let rect =
+    cv.boundingRect(
+        maxContour
+    );
+
+    const scaleX =
+    realWidth /
+    rect.width;
+
+    const scaleY =
+    realHeight /
+    rect.height;
+
+    const areaCm2 =
+    (
+        maxArea *
+        scaleX *
+        scaleY
+        / 100
+    );
+
+    document.getElementById(
+        "result"
+    ).innerHTML =
+
+    `
+    <div>
+
+    赤色輪郭面積：
+    ${Math.round(maxArea)}
+    pixel²
+
+    <br><br>
+
+    輪郭横：
+    ${rect.width}
+    px
+
+    <br>
+
+    輪郭縦：
+    ${rect.height}
+    px
+
+    <br><br>
+
+    <div class="big">
+
+    推定ブレード面積
+    <br>
+
+    ${areaCm2.toFixed(1)}
+    cm²
+
+    </div>
+
+    </div>
+    `;
+
+    src.delete();
+    hsv.delete();
+    low1.delete();
+    high1.delete();
+    low2.delete();
+    high2.delete();
+    mask1.delete();
+    mask2.delete();
+    mask.delete();
+    contours.delete();
+    hierarchy.delete();
+
+}
+
+</script>
+
+</body>
+</html>
