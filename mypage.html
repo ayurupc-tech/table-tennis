@@ -1,132 +1,415 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>マイページ</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      padding: 16px;
-    }
-    #loading {
-      font-size: 14px;
-      color: gray;
-    }
-    #list {
-      margin-top: 16px;
-    }
-  </style>
+<meta charset="UTF-8">
+<base target="_top">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>マイページ</title>
+
+<style>
+*{
+  box-sizing:border-box;
+}
+
+body{
+  margin:0;
+  padding:20px;
+  background:#f5f5f5;
+  font-family:sans-serif;
+}
+
+.container{
+  max-width:500px;
+  margin:auto;
+}
+
+h2{
+  text-align:center;
+  margin-bottom:20px;
+}
+
+.loading{
+  text-align:center;
+  color:#666;
+  margin:20px 0;
+}
+
+.item{
+  background:#fff;
+  border-radius:10px;
+  margin-bottom:12px;
+  overflow:hidden;
+  box-shadow:0 2px 5px rgba(0,0,0,.1);
+}
+
+.name{
+  padding:15px;
+  font-size:18px;
+  font-weight:bold;
+  cursor:pointer;
+  background:#eeeeee;
+}
+
+.detail{
+  display:none;
+  padding:15px;
+}
+
+label{
+  display:block;
+  margin-top:8px;
+  margin-bottom:4px;
+  font-size:13px;
+}
+
+input,
+select{
+  width:100%;
+  padding:8px;
+  border:1px solid #ccc;
+  border-radius:5px;
+}
+
+button{
+  width:100%;
+  margin-top:10px;
+  padding:10px;
+  border:none;
+  border-radius:6px;
+  font-size:15px;
+  cursor:pointer;
+}
+
+.save{
+  background:#06C755;
+  color:#fff;
+}
+
+.delete{
+  background:#ff4d4f;
+  color:#fff;
+}
+
+.add{
+  background:#007bff;
+  color:#fff;
+  margin-top:20px;
+}
+</style>
 </head>
+
 <body>
 
-<h2>参加者一覧</h2>
+<div class="container">
 
-<div id="loading">読み込み中...</div>
+<h2>マイページ（複数人）</h2>
+
+<div id="loading" class="loading">
+読み込み中...
+</div>
+
 <div id="list"></div>
 
-<script>
-const GAS_URL = "ここにGASのURL";
-const userId = "ユーザーID"; // 実際の値に置き換え
-let userCount = 0;
+<button class="add" onclick="addMember()">
+＋参加者追加
+</button>
 
-// 仮：createItem（元機能がある前提なら消してOK）
+</div>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+<script>
+
+const LIFF_ID="2009789600-3P82J7YF";
+
+const GAS_URL="https://script.google.com/macros/s/AKfycby8RrBjjvBFKU6G1D8tJD2SL3BHsSOqAE2nkpDdlhjykOsYI03a3uO0sN6URfIBcGQl/exec";
+
+let userId="";
+let userCount=0;
+
+//==============================
+// 初期化
+//==============================
+
+async function init(){
+
+  await liff.init({
+    liffId:LIFF_ID
+  });
+
+  if(!liff.isLoggedIn()){
+    liff.login();
+    return;
+  }
+
+  const profile=await liff.getProfile();
+
+  userId=profile.userId;
+
+  loadUsers();
+
+}
+
+//==============================
+// UI生成
+//==============================
+
+function createItem(u){
+
+  const div=document.createElement("div");
+
+  div.className="item";
+
+  div.innerHTML=`
+
+<div class="name" onclick="toggle(${u.row})">
+
+${u.name}
+
+</div>
+
+<div class="detail" id="detail_${u.row}">
+
+<label>名前</label>
+
+<input
+id="name_${u.row}"
+value="${u.name||""}"
+>
+
+<label>フリガナ</label>
+
+<input
+id="kana_${u.row}"
+value="${u.kana||""}"
+>
+
+<label>年齢</label>
+
+<input
+id="age_${u.row}"
+value="${u.age||""}"
+>
+
+<label>所属</label>
+
+<input
+id="club_${u.row}"
+value="${u.club||""}"
+>
+
+<label>ランク</label>
+
+<select id="rank_${u.row}">
+
+<option value="初級"
+${u.rank==="初級"?"selected":""}>
+初級
+</option>
+
+<option value="中級"
+${u.rank==="中級"?"selected":""}>
+中級
+</option>
+
+<option value="上級"
+${u.rank==="上級"?"selected":""}>
+上級
+</option>
+
+</select>
+
+<button
+class="save"
+onclick="updateUser(${u.row})">
+保存
+</button>
+
+<button
+class="delete"
+onclick="deleteUser(${u.row})">
+辞退（削除）
+</button>
+
+</div>
+
+`;
+
+  document
+  .getElementById("list")
+  .appendChild(div);
+
+}
+
+//==============================
+// 開閉
+//==============================
+
+function toggle(row){
+
+  const el=document.getElementById(
+    "detail_"+row
+  );
+
+  if(el.style.display==="block"){
+    el.style.display="none";
+  }else{
+    el.style.display="block";
+    <!-- Part2 -->
+
+<script>
+// ===== UI生成 =====
 function createItem(u) {
   const div = document.createElement("div");
-  div.textContent = JSON.stringify(u);
+  div.className = "item";
+
+  div.innerHTML = `
+    <div class="name" onclick="toggle(${u.row})">
+      ${u.name}
+    </div>
+
+    <div class="detail" id="detail_${u.row}">
+      <label>名前</label>
+      <input id="name_${u.row}" value="${u.name || ""}">
+
+      <label>フリガナ</label>
+      <input id="kana_${u.row}" value="${u.kana || ""}">
+
+      <label>年齢</label>
+      <input id="age_${u.row}" value="${u.age || ""}">
+
+      <label>所属</label>
+      <input id="club_${u.row}" value="${u.club || ""}">
+
+      <label>ランク</label>
+      <select id="rank_${u.row}">
+        <option value="初級" ${u.rank==="初級"?"selected":""}>初級</option>
+        <option value="中級" ${u.rank==="中級"?"selected":""}>中級</option>
+        <option value="上級" ${u.rank==="上級"?"selected":""}>上級</option>
+      </select>
+
+      <button class="save" onclick="updateUser(${u.row})">
+        保存
+      </button>
+
+      <button class="delete" onclick="deleteUser(${u.row})">
+        辞退（削除）
+      </button>
+    </div>
+  `;
+
   document.getElementById("list").appendChild(div);
 }
 
-async function loadUsers() {
-  try {
-    const cached = localStorage.getItem("initData");
+// ===== 開閉 =====
+function toggle(row) {
+  const el = document.getElementById("detail_" + row);
 
-    if (cached) {
-      try {
-        const data = JSON.parse(cached);
-
-        document.getElementById("loading").style.display = "none";
-        const list = document.getElementById("list");
-        list.innerHTML = "";
-
-        if (!data.myMembers || !Array.isArray(data.myMembers)) {
-          throw new Error("キャッシュ形式不正");
-        }
-
-        userCount = data.myMembers.length;
-
-        if (userCount === 0) {
-          list.innerHTML = "登録がありません";
-          return;
-        }
-
-        data.myMembers.forEach(u => createItem(u));
-
-        // 🔥 裏で更新
-        fetchLatestUsers();
-
-        return;
-
-      } catch (err) {
-        console.warn("キャッシュ壊れ:", err);
-        localStorage.removeItem("initData");
-      }
-    }
-
-    // fallback
-    const res = await fetch(GAS_URL + "?type=getUsers&userId=" + userId);
-    const data = await res.json();
-
-    document.getElementById("loading").style.display = "none";
-    const list = document.getElementById("list");
-    list.innerHTML = "";
-
-    if (!data.list || !Array.isArray(data.list)) {
-      list.innerHTML = "データ取得エラー";
-      return;
-    }
-
-    userCount = data.list.length;
-
-    if (userCount === 0) {
-      list.innerHTML = "登録がありません";
-      return;
-    }
-
-    data.list.forEach(u => createItem(u));
-
-    // キャッシュ保存
-    localStorage.setItem("initData", JSON.stringify({
-      myMembers: data.list
-    }));
-
-  } catch (e) {
-    alert("通信エラー：" + e);
+  if (el.style.display === "block") {
+    el.style.display = "none";
+  } else {
+    el.style.display = "block";
   }
 }
 
-// 裏更新
-async function fetchLatestUsers() {
-  try {
-    const res = await fetch(GAS_URL + "?type=getUsers&userId=" + userId);
-    const data = await res.json();
+// ===== 更新 =====
+async function updateUser(row) {
 
-    if (!data.list || !Array.isArray(data.list)) return;
+  const url =
+    GAS_URL +
+    "?type=update" +
+    "&row=" + row +
+    "&name=" + encodeURIComponent(document.getElementById("name_" + row).value) +
+    "&kana=" + encodeURIComponent(document.getElementById("kana_" + row).value) +
+    "&age=" + encodeURIComponent(document.getElementById("age_" + row).value) +
+    "&club=" + encodeURIComponent(document.getElementById("club_" + row).value) +
+    "&rank=" + encodeURIComponent(document.getElementById("rank_" + row).value);
 
-    localStorage.setItem("initData", JSON.stringify({
-      myMembers: data.list
-    }));
+  const res = await fetch(url);
+  const data = await res.json();
 
-    console.log("最新データ更新");
+  if (data.result === "update_ok") {
 
-  } catch (e) {
-    console.warn("更新失敗:", e);
+    // キャッシュ削除
+    localStorage.removeItem("initData");
+
+    alert("更新しました");
+
+    loadUsers();
   }
 }
 
-// 初回実行
-loadUsers();
+// ===== 削除 =====
+async function deleteUser(row) {
+
+  if (!confirm("本当に辞退しますか？")) return;
+
+  const res = await fetch(
+    GAS_URL + "?type=delete&row=" + row
+  );
+
+  const data = await res.json();
+
+  if (data.result === "delete_ok") {
+
+    localStorage.removeItem("initData");
+
+    alert("削除しました");
+
+    loadUsers();
+  }
+}
+<!-- Part3 -->
+
+<script>
+// ===== 参加者追加 =====
+async function addMember() {
+
+  if (userCount >= 10) {
+    alert("最大10人までです");
+    return;
+  }
+
+  const name = prompt("名前を入力してください");
+
+  if (!name) return;
+
+  const url =
+    GAS_URL +
+    "?type=write" +
+    "&userId=" + encodeURIComponent(userId) +
+    "&name=" + encodeURIComponent(name) +
+    "&kana=" +
+    "&age=" +
+    "&club=" +
+    "&rank=";
+
+  const res = await fetch(url);
+  const data = await res.json();
+
+  if (data.result === "duplicate") {
+    alert("同じ名前があります");
+    return;
+  }
+
+  if (data.result === "write_ok") {
+
+    // キャッシュ削除
+    localStorage.removeItem("initData");
+
+    alert("追加しました");
+
+    loadUsers();
+  }
+}
+
+// ===== 初期化 =====
+init();
 
 </script>
 
 </body>
 </html>
+  }
+
+}
