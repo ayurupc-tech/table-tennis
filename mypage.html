@@ -154,28 +154,25 @@ async function loadUsers() {
   document.getElementById("list").innerHTML = "";
 
   try {
-    const url = `${GAS_URL}?type=read&userId=${encodeURIComponent(userId)}`;
+    // 💡 GAS側の「getUsers」を呼び出すように修正
+    const url = `${GAS_URL}?type=getUsers&userId=${encodeURIComponent(userId)}`;
     const res = await fetch(url);
     const data = await res.json();
 
-    // 💡デバッグ用：GASからどんなデータが届いているかLINEの開発者コンソール等で確認できるようにします
-    console.log("GASから受信したデータ:", data);
-
     document.getElementById("loading").style.display = "none";
 
-    // パターンA: data 自体が配列の場合
-    if (Array.isArray(data)) {
-      userCount = data.length;
-      data.forEach(u => createItem(u));
-    } 
-    // パターンB: data.users が配列の場合（前回の想定）
-    else if (data && Array.isArray(data.users)) {
-      userCount = data.users.length;
-      data.users.forEach(u => createItem(u));
-    } 
-    // データが空、または形式が違う場合
-    else {
-      document.getElementById("loading").innerText = "参加者が登録されていません";
+    // GASから返ってきた「list」を取得
+    if (data && data.result === "ok" && Array.isArray(data.list)) {
+      userCount = data.list.length;
+      
+      if (userCount === 0) {
+        document.getElementById("loading").innerText = "参加者が登録されていません";
+        document.getElementById("loading").style.display = "block";
+      } else {
+        data.list.forEach(u => createItem(u));
+      }
+    } else {
+      document.getElementById("loading").innerText = "データの取得に失敗しました";
       document.getElementById("loading").style.display = "block";
     }
 
@@ -184,6 +181,7 @@ async function loadUsers() {
     document.getElementById("loading").innerText = "データの読み込みに失敗しました";
   }
 }
+
 // ===== UI生成 =====
 function createItem(u){
   const div = document.createElement("div");
@@ -191,7 +189,7 @@ function createItem(u){
 
   div.innerHTML = `
     <div class="name" onclick="toggle(${u.row})">
-      ${u.name}
+      ${u.name || "未設定"}
     </div>
 
     <div class="detail" id="detail_${u.row}">
@@ -236,9 +234,11 @@ function toggle(row){
 
 // ===== 更新 =====
 async function updateUser(row) {
+  // 💡 GAS側のキャッシュを消すためにuserIdを追加
   const url = GAS_URL +
     "?type=update" +
     "&row=" + row +
+    "&userId=" + encodeURIComponent(userId) +
     "&name=" + encodeURIComponent(document.getElementById("name_" + row).value) +
     "&kana=" + encodeURIComponent(document.getElementById("kana_" + row).value) +
     "&age=" + encodeURIComponent(document.getElementById("age_" + row).value) +
@@ -259,7 +259,8 @@ async function updateUser(row) {
 async function deleteUser(row) {
   if (!confirm("本当に辞退しますか？")) return;
 
-  const res = await fetch(GAS_URL + "?type=delete&row=" + row);
+  // 💡 GAS側のキャッシュを消すためにuserIdを追加
+  const res = await fetch(GAS_URL + "?type=delete&row=" + row + "&userId=" + encodeURIComponent(userId));
   const data = await res.json();
 
   if (data.result === "delete_ok") {
