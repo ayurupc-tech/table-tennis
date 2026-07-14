@@ -116,150 +116,63 @@ button{
 
 </div>
 
+<!-- LIFF SDKの読み込み -->
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
 <script>
+const LIFF_ID = "2009789600-3P82J7YF";
+const GAS_URL = "https://script.google.com/macros/s/AKfycby8RrBjjvBFKU6G1D8tJD2SL3BHsSOqAE2nkpDdlhjykOsYI03a3uO0sN6URfIBcGQl/exec";
 
-const LIFF_ID="2009789600-3P82J7YF";
+let userId = "";
+let userCount = 0;
 
-const GAS_URL="https://script.google.com/macros/s/AKfycby8RrBjjvBFKU6G1D8tJD2SL3BHsSOqAE2nkpDdlhjykOsYI03a3uO0sN6URfIBcGQl/exec";
-
-let userId="";
-let userCount=0;
-
-//==============================
-// 初期化
-//==============================
-
+// ===== 初期化 =====
 async function init(){
+  try {
+    await liff.init({
+      liffId: LIFF_ID
+    });
 
-  await liff.init({
-    liffId:LIFF_ID
-  });
+    if(!liff.isLoggedIn()){
+      liff.login();
+      return;
+    }
 
-  if(!liff.isLoggedIn()){
-    liff.login();
-    return;
+    const profile = await liff.getProfile();
+    userId = profile.userId;
+
+    loadUsers();
+  } catch (error) {
+    console.error("LIFFの初期化に失敗しました", error);
+    document.getElementById("loading").innerText = "初期化エラー";
   }
-
-  const profile=await liff.getProfile();
-
-  userId=profile.userId;
-
-  loadUsers();
-
 }
 
-//==============================
-// UI生成
-//==============================
+// ===== データ読み込み =====
+async function loadUsers() {
+  document.getElementById("loading").style.display = "block";
+  document.getElementById("list").innerHTML = "";
 
-function createItem(u){
+  try {
+    // GASからユーザー一覧を取得する処理
+    const url = `${GAS_URL}?type=read&userId=${encodeURIComponent(userId)}`;
+    const res = await fetch(url);
+    const data = await res.json();
 
-  const div=document.createElement("div");
+    document.getElementById("loading").style.display = "none";
 
-  div.className="item";
-
-  div.innerHTML=`
-
-<div class="name" onclick="toggle(${u.row})">
-
-${u.name}
-
-</div>
-
-<div class="detail" id="detail_${u.row}">
-
-<label>名前</label>
-
-<input
-id="name_${u.row}"
-value="${u.name||""}"
->
-
-<label>フリガナ</label>
-
-<input
-id="kana_${u.row}"
-value="${u.kana||""}"
->
-
-<label>年齢</label>
-
-<input
-id="age_${u.row}"
-value="${u.age||""}"
->
-
-<label>所属</label>
-
-<input
-id="club_${u.row}"
-value="${u.club||""}"
->
-
-<label>ランク</label>
-
-<select id="rank_${u.row}">
-
-<option value="初級"
-${u.rank==="初級"?"selected":""}>
-初級
-</option>
-
-<option value="中級"
-${u.rank==="中級"?"selected":""}>
-中級
-</option>
-
-<option value="上級"
-${u.rank==="上級"?"selected":""}>
-上級
-</option>
-
-</select>
-
-<button
-class="save"
-onclick="updateUser(${u.row})">
-保存
-</button>
-
-<button
-class="delete"
-onclick="deleteUser(${u.row})">
-辞退（削除）
-</button>
-
-</div>
-
-`;
-
-  document
-  .getElementById("list")
-  .appendChild(div);
-
+    if (data && data.users) {
+      userCount = data.users.length;
+      data.users.forEach(u => createItem(u));
+    }
+  } catch (error) {
+    console.error("ユーザーデータの読み込みに失敗しました", error);
+    document.getElementById("loading").innerText = "データの読み込みに失敗しました";
+  }
 }
 
-//==============================
-// 開閉
-//==============================
-
-function toggle(row){
-
-  const el=document.getElementById(
-    "detail_"+row
-  );
-
-  if(el.style.display==="block"){
-    el.style.display="none";
-  }else{
-    el.style.display="block";
-    <!-- Part2 -->
-
-<script>
 // ===== UI生成 =====
-function createItem(u) {
+function createItem(u){
   const div = document.createElement("div");
   div.className = "item";
 
@@ -283,18 +196,13 @@ function createItem(u) {
 
       <label>ランク</label>
       <select id="rank_${u.row}">
-        <option value="初級" ${u.rank==="初級"?"selected":""}>初級</option>
-        <option value="中級" ${u.rank==="中級"?"selected":""}>中級</option>
-        <option value="上級" ${u.rank==="上級"?"selected":""}>上級</option>
+        <option value="初級" ${u.rank === "初級" ? "selected" : ""}>初級</option>
+        <option value="中級" ${u.rank === "中級" ? "selected" : ""}>中級</option>
+        <option value="上級" ${u.rank === "上級" ? "selected" : ""}>上級</option>
       </select>
 
-      <button class="save" onclick="updateUser(${u.row})">
-        保存
-      </button>
-
-      <button class="delete" onclick="deleteUser(${u.row})">
-        辞退（削除）
-      </button>
+      <button class="save" onclick="updateUser(${u.row})">保存</button>
+      <button class="delete" onclick="deleteUser(${u.row})">辞退（削除）</button>
     </div>
   `;
 
@@ -302,10 +210,11 @@ function createItem(u) {
 }
 
 // ===== 開閉 =====
-function toggle(row) {
+function toggle(row){
   const el = document.getElementById("detail_" + row);
+  if(!el) return;
 
-  if (el.style.display === "block") {
+  if(el.style.display === "block"){
     el.style.display = "none";
   } else {
     el.style.display = "block";
@@ -314,9 +223,7 @@ function toggle(row) {
 
 // ===== 更新 =====
 async function updateUser(row) {
-
-  const url =
-    GAS_URL +
+  const url = GAS_URL +
     "?type=update" +
     "&row=" + row +
     "&name=" + encodeURIComponent(document.getElementById("name_" + row).value) +
@@ -329,53 +236,37 @@ async function updateUser(row) {
   const data = await res.json();
 
   if (data.result === "update_ok") {
-
-    // キャッシュ削除
     localStorage.removeItem("initData");
-
     alert("更新しました");
-
     loadUsers();
   }
 }
 
 // ===== 削除 =====
 async function deleteUser(row) {
-
   if (!confirm("本当に辞退しますか？")) return;
 
-  const res = await fetch(
-    GAS_URL + "?type=delete&row=" + row
-  );
-
+  const res = await fetch(GAS_URL + "?type=delete&row=" + row);
   const data = await res.json();
 
   if (data.result === "delete_ok") {
-
     localStorage.removeItem("initData");
-
     alert("削除しました");
-
     loadUsers();
   }
 }
-<!-- Part3 -->
 
-<script>
 // ===== 参加者追加 =====
 async function addMember() {
-
   if (userCount >= 10) {
     alert("最大10人までです");
     return;
   }
 
   const name = prompt("名前を入力してください");
-
   if (!name) return;
 
-  const url =
-    GAS_URL +
+  const url = GAS_URL +
     "?type=write" +
     "&userId=" + encodeURIComponent(userId) +
     "&name=" + encodeURIComponent(name) +
@@ -393,23 +284,15 @@ async function addMember() {
   }
 
   if (data.result === "write_ok") {
-
-    // キャッシュ削除
     localStorage.removeItem("initData");
-
     alert("追加しました");
-
     loadUsers();
   }
 }
 
-// ===== 初期化 =====
+// ===== 初期化実行 =====
 init();
-
 </script>
 
 </body>
 </html>
-  }
-
-}
