@@ -154,23 +154,36 @@ async function loadUsers() {
   document.getElementById("list").innerHTML = "";
 
   try {
-    // GASからユーザー一覧を取得する処理
     const url = `${GAS_URL}?type=read&userId=${encodeURIComponent(userId)}`;
     const res = await fetch(url);
     const data = await res.json();
 
+    // 💡デバッグ用：GASからどんなデータが届いているかLINEの開発者コンソール等で確認できるようにします
+    console.log("GASから受信したデータ:", data);
+
     document.getElementById("loading").style.display = "none";
 
-    if (data && data.users) {
+    // パターンA: data 自体が配列の場合
+    if (Array.isArray(data)) {
+      userCount = data.length;
+      data.forEach(u => createItem(u));
+    } 
+    // パターンB: data.users が配列の場合（前回の想定）
+    else if (data && Array.isArray(data.users)) {
       userCount = data.users.length;
       data.users.forEach(u => createItem(u));
+    } 
+    // データが空、または形式が違う場合
+    else {
+      document.getElementById("loading").innerText = "参加者が登録されていません";
+      document.getElementById("loading").style.display = "block";
     }
+
   } catch (error) {
     console.error("ユーザーデータの読み込みに失敗しました", error);
     document.getElementById("loading").innerText = "データの読み込みに失敗しました";
   }
 }
-
 // ===== UI生成 =====
 function createItem(u){
   const div = document.createElement("div");
